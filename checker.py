@@ -41,6 +41,8 @@ def is_on_sale(url: str) -> tuple[bool, dict]:
     for script in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(script.string)
+            if isinstance(data, list):
+                data = data[0] if data else {}
             offers = data.get("offers", {})
             if isinstance(offers, list):
                 offers = offers[0] if offers else {}
