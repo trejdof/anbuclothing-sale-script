@@ -65,12 +65,24 @@ def is_on_sale(url: str) -> tuple[bool, dict]:
         except (json.JSONDecodeError, TypeError, ValueError):
             continue
 
-    # Method 2: Fallback — look for sale/discount text on the page
-    page_text = soup.get_text()
-    sale_keywords = ["nedeljno sniženje", "ušteda", "sniženje", "rasprodaja"]
-    for keyword in sale_keywords:
-        if keyword.lower() in page_text.lower():
-            return True, {"url": url, "reason": f"Found keyword: '{keyword}'"}
+    # Method 2: Fallback — look for a strikethrough original price in the price block
+    price_block = soup.find("div", class_=lambda c: c and "items-baseline" in c and "gap-3" in c)
+    if price_block:
+        strikethrough = price_block.find("p", class_=lambda c: c and "line-through" in c)
+        current_p = price_block.find("p", class_=lambda c: c and "line-through" not in (c or "") and "text-2xl" in c)
+        if strikethrough and current_p:
+            try:
+                original = float(strikethrough.get_text(strip=True).replace("RSD", "").replace(",", "").strip())
+                current = float(current_p.get_text(strip=True).replace("RSD", "").replace(",", "").strip())
+                if original > current:
+                    return True, {
+                        "current_price": current,
+                        "original_price": original,
+                        "currency": "RSD",
+                        "url": url,
+                    }
+            except ValueError:
+                pass
 
     return False, {"url": url}
 
